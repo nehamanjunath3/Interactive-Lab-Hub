@@ -3,11 +3,9 @@
 
 """
 Be sure to check the learn guides for more usage information.
-
 This example is for use on (Linux) computers that are using CPython with
 Adafruit Blinka to support CircuitPython libraries. CircuitPython does
 not support PIL/pillow (python imaging library)!
-
 Author(s): Melissa LeBlanc-Williams for Adafruit Industries
 """
 
@@ -21,6 +19,21 @@ import adafruit_rgb_display.st7735 as st7735  # pylint: disable=unused-import
 import adafruit_rgb_display.ssd1351 as ssd1351  # pylint: disable=unused-import
 import adafruit_rgb_display.ssd1331 as ssd1331  # pylint: disable=unused-import
 
+def image_resize(image):
+	image_ratio = image.width / image.height
+	screen_ratio = width / height
+	if screen_ratio < image_ratio:
+    		scaled_width = image.width * height // image.height
+    		scaled_height = height
+	else:
+    		scaled_width = width
+    		scaled_height = image.height * width // image.width
+	image = image.resize((scaled_width, scaled_height), Image.BICUBIC)
+	# Crop and center the image
+	x = scaled_width // 2 - width // 2
+	y = scaled_height // 2 - height // 2
+	image = image.crop((x, y, x + width, y + height))
+	return image
 # Configuration for CS and DC pins (these are PiTFT defaults):
 cs_pin = digitalio.DigitalInOut(board.CE0)
 dc_pin = digitalio.DigitalInOut(board.D25)
@@ -74,27 +87,44 @@ draw = ImageDraw.Draw(image)
 draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
 disp.image(image)
 
-image = Image.open("red.jpg")
+image = Image.open("batman1.jpg")
 backlight = digitalio.DigitalInOut(board.D22)
 backlight.switch_to_output()
 backlight.value = True
+image= image_resize(image)
 
-
+buttonA = digitalio.DigitalInOut(board.D23)
+buttonB = digitalio.DigitalInOut(board.D24)
+buttonA.switch_to_input()
+buttonB.switch_to_input()
 # Scale the image to the smaller screen dimension
-image_ratio = image.width / image.height
-screen_ratio = width / height
-if screen_ratio < image_ratio:
-    scaled_width = image.width * height // image.height
-    scaled_height = height
-else:
-    scaled_width = width
-    scaled_height = image.height * width // image.width
-image = image.resize((scaled_width, scaled_height), Image.BICUBIC)
-# Crop and center the image
-x = scaled_width // 2 - width // 2
-y = scaled_height // 2 - height // 2
-image = image.crop((x, y, x + width, y + height))
+#image_ratio = image.width / image.height
+#screen_ratio = width / height
+#if screen_ratio < image_ratio:
+ #   scaled_width = image.width * height // image.height
+  #  scaled_height = height
+#else:
+ #   scaled_width = width
+  #  scaled_height = image.height * width // image.width
+#image = image.resize((scaled_width, scaled_height), Image.BICUBIC)
 
-# Display image.
-disp.image(image)
+# Crop and center the image
+#x = scaled_width // 2 - width // 2
+#y = scaled_height // 2 - height // 2
+#image_2 = image_2.crop((x, y, x + width, y + height))
+
+#Changes
+ironman = Image.open("ironman.jpg")
+ironman= image_resize(ironman)
+
+
+while True:
+	if buttonA.value and buttonB.value:
+		backlight.value= False
+	else: 
+		backlight.value= True
+	if buttonA.value == True and buttonB.value == False:
+		disp.image(image)
+	if buttonA.value == False and buttonB.value == True:
+		disp.image(ironman)
 
