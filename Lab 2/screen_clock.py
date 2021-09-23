@@ -63,7 +63,7 @@ draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
 disp.image(image, rotation)
 # Draw some shapes.
 # First define some constants to allow easy resizing of shapes.
-padding = 0
+padding = -2
 top = padding
 bottom = height - padding
 # Move left to right keeping track of the current x position for drawing shapes.
@@ -72,8 +72,8 @@ x = 0
 # Alternatively load a TTF font.  Make sure the .ttf font file is in the
 # same directory as the python script!
 # Some other nice fonts to try: http://www.dafont.com/bitmap.php
-font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 15)
-font1 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 25)
+font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
+font1 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22)
 # Turn on the backlight
 backlight = digitalio.DigitalInOut(board.D22)
 backlight.switch_to_output()
@@ -86,10 +86,11 @@ while True:
     #TODO: Lab 2 part D work should be filled in here. You should be able to look in cli_clock.py and stats.py 
     hours= int(strftime("%H"))
     minute= int(strftime("%M"))
-    if  hours>= 0 and hours <=5 :
+    if  hours== 22 and minute ==37 :
         image2 = Image.open("batman_logo.jpg")
         Greet = "Batman is watching you"
-    if  hours >= 18 and hours <=23:
+   # if  hours >= 18 and hours <=23:
+    else:
         image2 = Image.open ("superman.jpg")
         Greet = "Have a Super awesome day"
 
@@ -102,7 +103,7 @@ while True:
     y = top
     draw.text((x, y), Greet, font=font, fill="#FF0000")
     y += font.getsize(Greet)[1]
-    draw.text((x, y), Time, font=font1, fill="#FF0000")
+    draw.text((x, y), "Minutes Elapsed: "+ Time, font=font1, fill="#FF0000")
     # Display image.
     disp.image(image2, rotation)    
     time.sleep(1)
