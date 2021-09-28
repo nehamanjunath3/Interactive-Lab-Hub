@@ -5,6 +5,28 @@ import board
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_rgb_display.st7789 as st7789
 from time import strftime, sleep
+from random import randint
+import busio
+from i2c_button import I2C_Button
+#from __future__ import print_function
+import qwiic_button 
+import time
+import sys
+# initialize I2C
+i2c = busio.I2C(board.SCL, board.SDA)
+
+# scan the I2C bus for devices
+while not i2c.try_lock():
+        pass
+devices = i2c.scan()
+i2c.unlock()
+print('I2C devices found:', [hex(n) for n in devices])
+default_addr = 0x6f
+if default_addr not in devices:
+        print('warning: no device at the default button address', default_addr)
+
+# initialize the button
+button = I2C_Button(i2c)
 
 def image_resize(image):
         image = image.convert('RGB')
@@ -22,6 +44,12 @@ def image_resize(image):
         y = scaled_height // 2 - height // 2
         image = image.crop((x, y, x + width, y + height))
         return image
+
+# demonstrate writing to registers
+button.led_bright = randint(0, 255)
+button.led_gran = randint(0, 1)
+button.led_cycle_ms = randint(250, 2000)
+button.led_off_ms = randint(100, 500)
 
 
 # Configuration for CS and DC pins (these are FeatherWing defaults on M0/M4):
@@ -78,6 +106,10 @@ font1 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 22
 backlight = digitalio.DigitalInOut(board.D22)
 backlight.switch_to_output()
 backlight.value = True
+print('LED brightness', button.led_bright)
+print('LED granularity', button.led_gran)
+print('LED cycle ms', button.led_cycle_ms)
+print('LED off ms', button.led_off_ms)
 
 while True:
     # Draw a black filled box to clear the image.
@@ -120,18 +152,42 @@ while True:
         image2 = Image.open ("superman.jpg")
         Greet = "Have a Super awesome day"
 
+    try:
+        button.clear() # status must be cleared manually
+        time.sleep(1)
+        print('status', button.status)
+        if button.status.is_pressed == 1:
+            image2 = Image.open ("superman.jpg")
+        print('last click ms', button.last_click_ms)
+        print('last press ms', button.last_press_ms)
+    except KeyboardInterrupt:
+        button.clear()
+        button.led_bright = 0
+        button.led_gran = 1
+        button.led_cycle_ms = 0
+        button.led_off_ms = 100
+        break
     hours= int(strftime("%H"))
     minute= int(strftime("%M"))
     image2 = image_resize(image2)
     draw= ImageDraw.Draw(image2)
-    if hours % 2 == 1:
+    if hours % 2 == 0:
         Time=  str(minute)
     else :
         Time= str(minute + 60)
     y = top
-    draw.text((x, y), Greet, font=font, fill="#FF0000")
+    draw.text((x, y), Greet, font=font, fill="#FFFF00")
     y += font.getsize(Greet)[1]
     draw.text((x, y), "Minutes Elapsed: "+ Time, font=font1, fill="#FF0000")
     # Display image.
     disp.image(image2, rotation)
+
     time.sleep(1)
+
+
+
+
+
+
+
+
