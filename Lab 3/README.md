@@ -68,6 +68,10 @@ One thing you might need to pay attention to is the audio input setting of Pi. S
 
 \*\***Write your own shell file that verbally asks for a numerical based input (such as a phone number, zipcode, number of pets, etc) and records the answer the respondent provides.**\*\*
 
+
+https://user-images.githubusercontent.com/64258179/135953553-e7c626b8-c291-449e-9603-ffc8fcc6028c.mp4
+
+
 Bonus Activity:
 
 If you are really excited about Speech to Text, you can try out [Mozilla DeepSpeech](https://github.com/mozilla/DeepSpeech) and [voice2json](http://voice2json.org/install.html)
@@ -103,20 +107,38 @@ Storyboard and/or use a Verplank diagram to design a speech-enabled device. (Stu
 
 \*\***Post your storyboard and diagram here.**\*\*
 
+![WhatsApp Image 2021-10-04 at 11 01 26 PM](https://user-images.githubusercontent.com/64258179/135953626-3054f4ae-3396-4ca7-97f7-ebd4b913d735.jpeg)
+
 Write out what you imagine the dialogue to be. Use cards, post-its, or whatever method helps you develop alternatives or group responses. 
 
 \*\***Please describe and document your process.**\*\*
 
-### Acting out the dialogue
+This idea was inspired by New York and its erratic weather. While there are so many activities to do in the city, we also need to aware of the weather changes and dress accordingly. This device Climaide gives the user style advice keeping the weather in mind.
+__Dialogue__
+User: Hey buddy
+Climaide: Hey User
+User: I'm going on a date tonight. What do I wear?
+Climaide: Wear a dress. Along with that carry a coat. The temperature is going to be 20 degree celcius
+USer: Thank you! Is it going to rain?
+Climaide: There's 20% chance of precipitation
+User: Thank you climaide
+
+
+### Acting out the dialogue!
 
 Find a partner, and *without sharing the script with your partner* try out the dialogue you've designed, where you (as the device designer) act as the device you are designing.  Please record this interaction (for example, using Zoom's record feature).
 
 \*\***Describe if the dialogue seemed different than what you imagined when it was acted out, and how.**\*\*
 
+The dialogue was more complex than expected. Users generally tend to get too personal nd ask too many options when it come to styling. Also the occasion on which the style advice should be given needs to be more detailed as there multiple options for each occasion. 
+
+
 ### Wizarding with the Pi (optional)
 In the [demo directory](./demo), you will find an example Wizard of Oz project. In that project, you can see how audio and sensor data is streamed from the Pi to a wizard controller that runs in the browser.  You may use this demo code as a template. By running the `app.py` script, you can see how audio and sensor data (Adafruit MPU-6050 6-DoF Accel and Gyro Sensor) is streamed from the Pi to a wizard controller that runs in the browser `http://<YouPiIPAddress>:5000`. You can control what the system says from the controller as well!
 
 \*\***Describe if the dialogue seemed different than what you imagined, or when acted out, when it was wizarded, and how.**\*\*
+
+The dialogue was significantly different from when it was imagined and from when it was acted out and wizared. When it was acted out I realised the dialogue needs to be more nuanced with a lot ore options. Duriing the wizarding process, the dialogue from the system could be monitored and also inspiration was drawn to use other sensors to make the interaction more engaging
 
 # Lab 3 Part 2
 
