@@ -105,6 +105,13 @@ Install the packages from the requirements.txt and run the example script `cli_c
 The terminal should show the time, you can press `ctrl-c` to exit the script.
 If you are unfamiliar with the Python code in `cli_clock.py`, have a look at [this Python refresher](https://hackernoon.com/intermediate-python-refresher-tutorial-project-ideas-and-tips-i28s320p). If you are still concerned, please reach out to the teaching staff!
 
+__Cli-clock.py demo__
+
+
+https://user-images.githubusercontent.com/64258179/134098011-da839779-1f77-4a78-b8ac-c88f6cd791c6.mp4
+
+
+
 
 ## Part C. 
 ### Set up your RGB Display
@@ -141,7 +148,13 @@ We can test it by typing
 You can type the name of a color then press either of the buttons on the MiniPiTFT to see what happens on the display! You can press `ctrl-c` to exit the script. Take a look at the code with
 ```
 (circuitpython) pi@ixe00:~/Interactive-Lab-Hub/Lab 2 $ cat screen_test.py
+
 ```
+
+https://user-images.githubusercontent.com/64258179/134098669-359810c2-e5e4-4cbc-85bd-fe3f80c992f0.mp4
+
+
+
 
 #### Displaying Info with Texts
 You can look in `stats.py` for how to display text on the screen!
@@ -149,6 +162,11 @@ You can look in `stats.py` for how to display text on the screen!
 #### Displaying an image
 
 You can look in `image.py` for an example of how to display an image on the screen. Can you make it switch to another image when you push one of the buttons?
+The `toggle_image.py` changes between two different pictures by pressing two different buttons. 
+
+
+https://user-images.githubusercontent.com/64258179/134099494-7d3d6189-55bb-4e94-a46e-7fcf6c1bfaf8.mp4
+
 
 
 
@@ -188,6 +206,7 @@ Can you make time interactive? You can look in `screen_test.py` for examples for
 
 After you edit and work on the scripts for Lab 2, the files should be upload back to your own GitHub repo! You can push to your personal github repo by adding the files here, commiting and pushing.
 
+The new clock is called a superhero clock. The display changes every two hours with a new superhero image and the minutes is displayed as a countdown that the particular superhero is on your screen including an entertaining message. The heroes are chosen for different times of the day relting to the superhero characteristics and the given time of the day.
 ```
 (circuitpython) pi@ixe00:~/Interactive-Lab-Hub/Lab 2 $ git add .
 (circuitpython) pi@ixe00:~/Interactive-Lab-Hub/Lab 2 $ git commit -m 'your commit message here'
@@ -202,8 +221,13 @@ After that, Git will ask you to login to your GitHub account to push the updates
 
 \*\*\***Take a video of your PiClock.**\*\*\*
 
+
+https://user-images.githubusercontent.com/64258179/134103740-85561ebf-908b-405e-af53-36b3f1b4db83.mp4
+
+
 ## Part G. 
 ## Sketch and brainstorm further interactions and features you would like for your clock for Part 2.
+While brainstorming different ideas for the ___Superhero Clock___, one of the ideas for the user interaction of the clock is using external light and sound for indication of time change. Also using different buttons to toggle between backgrounds whenever the user wants.
 
 
 # Prep for Part 2
@@ -222,5 +246,11 @@ Modify the code from last week's lab to make a new visual interface for your new
 As always, make sure you document contributions and ideas from others explicitly in your writeup.
 
 You are permitted (but not required) to work in groups and share a turn in; you are expected to make equal contribution on any group work you do, and N people's group project should look like N times the work of a single person's lab. What each person did should be explicitly documented. Make sure the page for the group turn in is linked to your Interactive Lab Hub page. 
+
+The first lab involved changing the image background twice a day. The new version involves changing the background every two hours along with indication of the hour change using the light flashing from the LED button sensor. Also there are different modes for different times of the day.
+
+
+https://user-images.githubusercontent.com/64258179/135037015-055dabbf-bb79-47a6-98f8-10e84676007f.mp4
+
 
 
