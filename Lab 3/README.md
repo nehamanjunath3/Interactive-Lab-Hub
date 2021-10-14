@@ -147,19 +147,27 @@ For Part 2, you will redesign the interaction with the speech-enabled device usi
 ## Prep for Part 2
 
 1. What are concrete things that could use improvement in the design of your device? For example: wording, timing, anticipation of misunderstandings...
+The users usually say multiple words for different occasions. So an extensive library including all the possible words would be more effective. Also users dont speak partial sentences or just key words. So using structured sentences as input wouln't work. So extracting keywords is more effective.
 2. What are other modes of interaction _beyond speech_ that you might also use to clarify how to interact?
+One of the most common feedbacks involved having images as a way of communicating rather than just given the problem statement. So i decided on including the tft display to show different styling options for the user.
 3. Make a new storyboard, diagram and/or script based on these reflections.
+![WhatsApp Image 2021-10-13 at 10 09 46 PM](https://user-images.githubusercontent.com/64258179/137238840-98f7eb64-5d47-4c29-8ec7-f4fb86fe8f3b.jpeg)
 
 ## Prototype your system
 
-The system should:
-* use the Raspberry Pi 
-* use one or more sensors
-* require participants to speak to it. 
+The system includes:
+* Raspberry Pi 
+* Qwiic Red Button
+* Participants interact with the system 
 
 *Document how the system works*
+The device asks the user to input the occasion they are dressing for. Based on the user's input the device gives a suggestion on what would be good way to dress. All these responses from the device are stored in separate shell files. The user's input is recored from the microphone and specific words are chosen to determine the different cases. If the users words aren't in the vocabulary of the device then it returns a didn't understand message. For more options. The user is asked to press the red qwiic button to see different styling options for different occasions.
 
 *Include videos or screencaptures of both the system and the controller.*
+
+
+https://user-images.githubusercontent.com/64258179/137237187-fdb75142-b7a7-4693-afa5-4e7e60f87a12.mp4
+
 
 ## Test the system
 Try to get at least two people to interact with your system. (Ideally, you would inform them that there is a wizard _after_ the interaction, but we recognize that can be hard.)
@@ -167,18 +175,18 @@ Try to get at least two people to interact with your system. (Ideally, you would
 Answer the following:
 
 ### What worked well about the system and what didn't?
-\*\**your answer here*\*\*
+\*\**The partcipants really liked the idea and were impressed with the images and the speech responses. But they asked for more scenarios which the device wasn't prepared to handle. The timing and the delay in response was also a painpoint according to the users. They also felt that the stying options displayed on the screen should be an autonomous feature. They felt more control could be given to the user in choosing the dress options displayed on the screen. *\*\*
 
 ### What worked well about the controller and what didn't?
 
-\*\**your answer here*\*\*
+\*\**The red button was useful but a rotary encoder or joystick in picking the dresses would have felt more engaging.*\*\*
 
 ### What lessons can you take away from the WoZ interactions for designing a more autonomous version of the system?
 
-\*\**your answer here*\*\*
+\*\**The design has to prepaperd for all the edge case scenarios especially while recording the responses from the user which the device was not prepared for.*\*\*
 
 
 ### How could you use your system to create a dataset of interaction? What other sensing modalities would make sense to capture?
 
-\*\**your answer here*\*\*
+\*\**Touch sensors and gesture control could be used for better interactions. Also temeprature sensor could be used to sense the temeprature of the room and suggest clothing based on that.*\*\*
 
