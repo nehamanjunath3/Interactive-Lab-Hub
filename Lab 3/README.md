@@ -68,6 +68,10 @@ One thing you might need to pay attention to is the audio input setting of Pi. S
 
 \*\***Write your own shell file that verbally asks for a numerical based input (such as a phone number, zipcode, number of pets, etc) and records the answer the respondent provides.**\*\*
 
+
+https://user-images.githubusercontent.com/64258179/135953553-e7c626b8-c291-449e-9603-ffc8fcc6028c.mp4
+
+
 Bonus Activity:
 
 If you are really excited about Speech to Text, you can try out [Mozilla DeepSpeech](https://github.com/mozilla/DeepSpeech) and [voice2json](http://voice2json.org/install.html)
@@ -103,20 +107,38 @@ Storyboard and/or use a Verplank diagram to design a speech-enabled device. (Stu
 
 \*\***Post your storyboard and diagram here.**\*\*
 
+![WhatsApp Image 2021-10-04 at 11 01 26 PM](https://user-images.githubusercontent.com/64258179/135953626-3054f4ae-3396-4ca7-97f7-ebd4b913d735.jpeg)
+
 Write out what you imagine the dialogue to be. Use cards, post-its, or whatever method helps you develop alternatives or group responses. 
 
 \*\***Please describe and document your process.**\*\*
 
-### Acting out the dialogue
+This idea was inspired by New York and its erratic weather. While there are so many activities to do in the city, we also need to aware of the weather changes and dress accordingly. This device Climaide gives the user style advice keeping the weather in mind.
+__Dialogue__
+User: Hey buddy
+Climaide: Hey User
+User: I'm going on a date tonight. What do I wear?
+Climaide: Wear a dress. Along with that carry a coat. The temperature is going to be 20 degree celcius
+USer: Thank you! Is it going to rain?
+Climaide: There's 20% chance of precipitation
+User: Thank you climaide
+
+
+### Acting out the dialogue!
 
 Find a partner, and *without sharing the script with your partner* try out the dialogue you've designed, where you (as the device designer) act as the device you are designing.  Please record this interaction (for example, using Zoom's record feature).
 
 \*\***Describe if the dialogue seemed different than what you imagined when it was acted out, and how.**\*\*
 
+The dialogue was more complex than expected. Users generally tend to get too personal nd ask too many options when it come to styling. Also the occasion on which the style advice should be given needs to be more detailed as there multiple options for each occasion. 
+
+
 ### Wizarding with the Pi (optional)
 In the [demo directory](./demo), you will find an example Wizard of Oz project. In that project, you can see how audio and sensor data is streamed from the Pi to a wizard controller that runs in the browser.  You may use this demo code as a template. By running the `app.py` script, you can see how audio and sensor data (Adafruit MPU-6050 6-DoF Accel and Gyro Sensor) is streamed from the Pi to a wizard controller that runs in the browser `http://<YouPiIPAddress>:5000`. You can control what the system says from the controller as well!
 
 \*\***Describe if the dialogue seemed different than what you imagined, or when acted out, when it was wizarded, and how.**\*\*
+
+The dialogue was significantly different from when it was imagined and from when it was acted out and wizared. When it was acted out I realised the dialogue needs to be more nuanced with a lot ore options. Duriing the wizarding process, the dialogue from the system could be monitored and also inspiration was drawn to use other sensors to make the interaction more engaging
 
 # Lab 3 Part 2
 
@@ -125,19 +147,27 @@ For Part 2, you will redesign the interaction with the speech-enabled device usi
 ## Prep for Part 2
 
 1. What are concrete things that could use improvement in the design of your device? For example: wording, timing, anticipation of misunderstandings...
+The users usually say multiple words for different occasions. So an extensive library including all the possible words would be more effective. Also users dont speak partial sentences or just key words. So using structured sentences as input wouln't work. So extracting keywords is more effective.
 2. What are other modes of interaction _beyond speech_ that you might also use to clarify how to interact?
+One of the most common feedbacks involved having images as a way of communicating rather than just given the problem statement. So i decided on including the tft display to show different styling options for the user.
 3. Make a new storyboard, diagram and/or script based on these reflections.
+![WhatsApp Image 2021-10-13 at 10 09 46 PM](https://user-images.githubusercontent.com/64258179/137238840-98f7eb64-5d47-4c29-8ec7-f4fb86fe8f3b.jpeg)
 
 ## Prototype your system
 
-The system should:
-* use the Raspberry Pi 
-* use one or more sensors
-* require participants to speak to it. 
+The system includes:
+* Raspberry Pi 
+* Qwiic Red Button
+* Participants interact with the system 
 
 *Document how the system works*
+The device asks the user to input the occasion they are dressing for. Based on the user's input the device gives a suggestion on what would be good way to dress. All these responses from the device are stored in separate shell files. The user's input is recored from the microphone and specific words are chosen to determine the different cases. If the users words aren't in the vocabulary of the device then it returns a didn't understand message. For more options. The user is asked to press the red qwiic button to see different styling options for different occasions.
 
 *Include videos or screencaptures of both the system and the controller.*
+
+
+https://user-images.githubusercontent.com/64258179/137237187-fdb75142-b7a7-4693-afa5-4e7e60f87a12.mp4
+
 
 ## Test the system
 Try to get at least two people to interact with your system. (Ideally, you would inform them that there is a wizard _after_ the interaction, but we recognize that can be hard.)
@@ -145,18 +175,18 @@ Try to get at least two people to interact with your system. (Ideally, you would
 Answer the following:
 
 ### What worked well about the system and what didn't?
-\*\**your answer here*\*\*
+\*\**The partcipants really liked the idea and were impressed with the images and the speech responses. But they asked for more scenarios which the device wasn't prepared to handle. The timing and the delay in response was also a painpoint according to the users. They also felt that the stying options displayed on the screen should be an autonomous feature. They felt more control could be given to the user in choosing the dress options displayed on the screen. *\*\*
 
 ### What worked well about the controller and what didn't?
 
-\*\**your answer here*\*\*
+\*\**The red button was useful but a rotary encoder or joystick in picking the dresses would have felt more engaging.*\*\*
 
 ### What lessons can you take away from the WoZ interactions for designing a more autonomous version of the system?
 
-\*\**your answer here*\*\*
+\*\**The design has to prepaperd for all the edge case scenarios especially while recording the responses from the user which the device was not prepared for.*\*\*
 
 
 ### How could you use your system to create a dataset of interaction? What other sensing modalities would make sense to capture?
 
-\*\**your answer here*\*\*
+\*\**Touch sensors and gesture control could be used for better interactions. Also temeprature sensor could be used to sense the temeprature of the room and suggest clothing based on that.*\*\*
 
