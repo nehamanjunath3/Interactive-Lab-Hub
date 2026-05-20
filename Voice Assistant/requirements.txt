@@ -1,0 +1,6 @@
+anthropic
+faster-whisper
+pyaudio
+sparkfun-qwiic-button
+sparkfun-qwiic-led-stick
+sparkfun-qwiic-oled-display
