@@ -21,7 +21,7 @@ import pyaudio
 from google import genai
 import qwiic_button
 import qwiic_led_stick
-import qwiic_micro_oled
+# qwiic_micro_oled imported lazily — only when hardware is connected
 from faster_whisper import WhisperModel
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -50,15 +50,12 @@ def init_hardware():
     green_btn = qwiic_button.QwiicButton(address=0x5F)
     red_btn   = qwiic_button.QwiicButton(address=0x6F)
     leds      = qwiic_led_stick.QwiicLEDStick()
-    oled      = qwiic_micro_oled.QwiicMicroOled()
-
     for dev, name in [(green_btn, "green button"), (red_btn, "red button"),
-                      (leds, "LED stick"), (oled, "OLED")]:
+                      (leds, "LED stick")]:
         if not dev.is_connected():
             print(f"[WARN] {name} not detected — check wiring/address")
 
-    oled.begin()
-    return green_btn, red_btn, leds, oled
+    return green_btn, red_btn, leds, None  # oled=None until library fixed
 
 
 def set_leds(leds, colour):
@@ -75,6 +72,9 @@ def pulse_leds(leds, colour, times=2):
 
 
 def show_oled(oled, line1, line2=""):
+    print(f"[OLED] {line1} {line2}".strip())
+    if oled is None:
+        return
     oled.clear()
     wrapped = textwrap.wrap(line1, 16)[:2]
     if line2:
@@ -180,8 +180,9 @@ def main():
     except KeyboardInterrupt:
         print("\nBye!")
         set_leds(leds, COLOUR_OFF)
-        oled.clear()
-        oled.display()
+        if oled:
+            oled.clear()
+            oled.display()
 
 
 if __name__ == "__main__":

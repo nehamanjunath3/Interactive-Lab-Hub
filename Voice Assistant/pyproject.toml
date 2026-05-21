@@ -8,5 +8,4 @@ dependencies = [
     "pyaudio",
     "sparkfun-qwiic-button",
     "sparkfun-qwiic-led-stick",
-    "sparkfun-qwiic-micro-oled",
 ]
