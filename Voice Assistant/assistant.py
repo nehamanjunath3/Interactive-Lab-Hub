@@ -28,7 +28,7 @@ CHANNELS        = 1
 CHUNK           = 1024
 MAX_RECORD_SECS = 15
 WHISPER_MODEL   = "tiny"
-GEMINI_MODEL    = "gemini-2.5-flash"
+GEMINI_MODEL    = "gemini-3.5-flash"
 SYSTEM_PROMPT   = (
     "You are a friendly voice assistant running on a Raspberry Pi. "
     "Keep every response under 2 sentences so it fits on a small screen "
