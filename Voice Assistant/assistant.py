@@ -18,10 +18,10 @@ import textwrap
 import subprocess
 
 import pyaudio
-import google.generativeai as genai
+from google import genai
 import qwiic_button
 import qwiic_led_stick
-import qwiic_oled_display
+import qwiic_micro_oled
 from faster_whisper import WhisperModel
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ def init_hardware():
     green_btn = qwiic_button.QwiicButton(address=0x5F)
     red_btn   = qwiic_button.QwiicButton(address=0x6F)
     leds      = qwiic_led_stick.QwiicLEDStick()
-    oled      = qwiic_oled_display.QwiicOledDisplay()
+    oled      = qwiic_micro_oled.QwiicMicroOled()
 
     for dev, name in [(green_btn, "green button"), (red_btn, "red button"),
                       (leds, "LED stick"), (oled, "OLED")]:
@@ -130,6 +130,7 @@ def ask_gemini(chat, user_text, leds, oled):
     return response.text.strip()
 
 
+
 def speak(text, leds, oled):
     set_leds(leds, COLOUR_SPEAK)
     show_oled(oled, text[:32], text[32:64] if len(text) > 32 else "")
@@ -144,9 +145,9 @@ def main():
     print(f"Loading Whisper '{WHISPER_MODEL}' model (first run downloads it)...")
     whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
 
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    model = genai.GenerativeModel(GEMINI_MODEL, system_instruction=SYSTEM_PROMPT)
-    chat  = model.start_chat(history=[])
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    chat   = client.chats.create(model=GEMINI_MODEL,
+                                 config={"system_instruction": SYSTEM_PROMPT})
 
     set_leds(leds, COLOUR_IDLE)
     show_oled(oled, "AI Assistant", "Press GREEN")
