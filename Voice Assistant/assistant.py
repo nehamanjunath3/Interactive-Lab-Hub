@@ -4,6 +4,7 @@ Voice AI Assistant for Raspberry Pi w/ Adafruit Mini PiTFT 1.3"
 - Button A (GPIO 23): press to start recording
 - Button B (GPIO 24): press to stop recording early
 - MiniPiTFT display : Inside Out emotion faces per state
+- Qwiic LED stick   : colour reactions (optional)
 - faster-whisper    : speech-to-text (runs locally)
 - Claude Haiku      : AI responses
 - espeak-ng         : text-to-speech
@@ -39,31 +40,22 @@ SYSTEM_PROMPT   = (
     "and spoken aloud."
 )
 
-# ── MiniPiTFT pins ────────────────────────────────────────────────────────────
-BTN_A = 23
-BTN_B = 24
-
-# ── Colours ───────────────────────────────────────────────────────────────────
-BLACK  = (  0,   0,   0)
-WHITE  = (255, 255, 255)
-YELLOW = (255, 220,   0)
-BLUE   = ( 60, 120, 255)
-PURPLE = (160,  60, 220)
-GREEN  = ( 40, 200,  80)
-RED    = (220,  50,  30)
-
+BTN_A     = 23
+BTN_B     = 24
 FACES_DIR = Path(__file__).parent / "faces"
 
-# State → (face file, label, label colour, bg colour)
+# State → (face, label, label_colour, bg, led_colour)
 STATES = {
-    "idle":         ("joy.png",     "Press A!",      YELLOW, ( 30,  25,   0)),
-    "listening":    ("fear.png",    "Listening...",  PURPLE, ( 15,   0,  25)),
-    "transcribing": ("sadness.png", "Hmm...",        BLUE,   (  0,   5,  25)),
-    "thinking":     ("sadness.png", "Thinking...",   BLUE,   (  0,   5,  25)),
-    "speaking":     ("excited.png", "Claude says:",  GREEN,  (  0,  20,   5)),
-    "error":        ("anger.png",   "Try again!",    RED,    ( 25,   0,   0)),
+    "idle":         ("joy.png",     "Press A to talk!",  (255, 220,   0), ( 20,  15,   0), (  8,   6,   0)),
+    "listening":    ("fear.png",    "Listening...",      (180,  80, 255), ( 10,   0,  20), (  5,   0,  10)),
+    "transcribing": ("sadness.png", "Got it, thinking!", ( 80, 140, 255), (  0,   5,  20), (  0,   2,   8)),
+    "thinking":     ("sadness.png", "Thinking...",       ( 80, 140, 255), (  0,   5,  20), (  0,   2,   8)),
+    "speaking":     ("excited.png", "Claude says:",      ( 60, 220, 100), (  0,  15,   5), (  0,   8,   2)),
+    "error":        ("anger.png",   "Didn't catch that", (220,  60,  40), ( 20,   0,   0), (  8,   0,   0)),
 }
 
+
+# ── Hardware init ─────────────────────────────────────────────────────────────
 
 def init_display():
     cs    = digitalio.DigitalInOut(board.CE0)
@@ -78,14 +70,28 @@ def init_display():
     return disp
 
 
-def load_fonts():
+def init_leds():
     try:
-        bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
-        reg  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
+        import qwiic_led_stick
+        stick = qwiic_led_stick.QwiicLEDStick()
+        if stick.is_connected():
+            stick.set_all_LED_brightness(15)
+            print("  LED stick connected")
+            return stick
     except Exception:
-        bold = ImageFont.load_default()
-        reg  = bold
-    return bold, reg
+        pass
+    print("  LED stick not found — skipping")
+    return None
+
+
+def set_leds(stick, colour):
+    if stick is None:
+        return
+    try:
+        r, g, b = colour
+        stick.set_all_LED_color(r, g, b)
+    except Exception:
+        pass
 
 
 def init_buttons():
@@ -102,34 +108,52 @@ def btn_b_pressed():
     return GPIO.input(BTN_B) == GPIO.LOW
 
 
-def show_face(disp, fonts, state, body=""):
-    face_file, label, label_color, bg = STATES[state]
+def load_fonts():
+    try:
+        bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
+        reg  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 17)
+    except Exception:
+        bold = ImageFont.load_default()
+        reg  = bold
+    return bold, reg
+
+
+# ── Display ───────────────────────────────────────────────────────────────────
+
+def show_face(disp, fonts, stick, state, body=""):
+    face_file, label, label_color, bg, led_color = STATES[state]
     bold, reg = fonts
+
+    set_leds(stick, led_color)
 
     img  = Image.new("RGB", (240, 240), bg)
     draw = ImageDraw.Draw(img)
 
-    # Face — centred in top ~160px
+    # Face — top portion, centred
     face_path = FACES_DIR / face_file
     if face_path.exists():
-        face = Image.open(face_path).convert("RGBA").resize((160, 160), Image.LANCZOS)
-        # Paste with alpha mask so transparent background shows through
-        img.paste(face, (40, 5), face)
+        face = Image.open(face_path).convert("RGBA").resize((130, 130), Image.LANCZOS)
+        img.paste(face, (55, 8), face)
 
-    # Label below face
-    draw.text((10, 170), label, font=bold, fill=label_color)
+    # Divider line
+    draw.line([(0, 145), (240, 145)], fill=(50, 50, 50), width=1)
 
-    # Body text (wrapped)
+    # Label
+    draw.text((8, 150), label, font=bold, fill=label_color)
+
+    # Body text — word-wrapped
     if body:
-        y = 200
-        for line in textwrap.wrap(body, width=22):
-            draw.text((10, y), line, font=reg, fill=WHITE)
-            y += 22
+        y = 178
+        for line in textwrap.wrap(body, width=26):
+            draw.text((8, y), line, font=reg, fill=(220, 220, 220))
+            y += 21
             if y > 235:
                 break
 
     disp.image(img)
 
+
+# ── Audio ─────────────────────────────────────────────────────────────────────
 
 def find_input_device(pa):
     for i in range(pa.get_device_count()):
@@ -140,7 +164,7 @@ def find_input_device(pa):
     return None
 
 
-def record_audio(disp, fonts):
+def record_audio(disp, fonts, stick):
     pa          = pyaudio.PyAudio()
     input_index = find_input_device(pa)
     stream      = pa.open(format=pyaudio.paInt16, channels=CHANNELS,
@@ -149,7 +173,7 @@ def record_audio(disp, fonts):
                           frames_per_buffer=CHUNK)
     frames = []
     start  = time.time()
-    show_face(disp, fonts, "listening")
+    show_face(disp, fonts, stick, "listening")
 
     while time.time() - start < MAX_RECORD_SECS:
         frames.append(stream.read(CHUNK, exception_on_overflow=False))
@@ -169,16 +193,18 @@ def record_audio(disp, fonts):
     return tmp.name
 
 
-def transcribe(whisper_model, audio_path, disp, fonts):
-    show_face(disp, fonts, "transcribing")
+# ── AI pipeline ───────────────────────────────────────────────────────────────
+
+def transcribe(whisper_model, audio_path, disp, fonts, stick):
+    show_face(disp, fonts, stick, "transcribing")
     segments, _ = whisper_model.transcribe(audio_path, language="en")
     text = " ".join(seg.text.strip() for seg in segments)
     os.unlink(audio_path)
     return text.strip()
 
 
-def ask_claude(client, history, user_text, disp, fonts):
-    show_face(disp, fonts, "thinking", user_text[:50])
+def ask_claude(client, history, user_text, disp, fonts, stick):
+    show_face(disp, fonts, stick, "thinking", user_text[:80])
     history.append({"role": "user", "content": user_text})
     response = client.messages.create(
         model=CLAUDE_MODEL,
@@ -191,28 +217,33 @@ def ask_claude(client, history, user_text, disp, fonts):
     return reply
 
 
-def speak(text, disp, fonts):
-    show_face(disp, fonts, "speaking", text)
+def speak(text, disp, fonts, stick):
+    show_face(disp, fonts, stick, "speaking", text)
     print(f"  Claude: {text}")
     subprocess.run(["espeak-ng", "-s", "145", "-v", "en-us+f3", text], check=False)
 
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     print("Initialising display...")
     disp  = init_display()
     fonts = load_fonts()
-    show_face(disp, fonts, "thinking")  # Sadness = loading face
 
     print("Initialising buttons...")
     init_buttons()
 
+    print("Initialising LED stick...")
+    stick = init_leds()
+
     print(f"Loading Whisper '{WHISPER_MODEL}' model...")
+    show_face(disp, fonts, stick, "thinking")
     whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
 
     client  = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     history = []
 
-    show_face(disp, fonts, "idle")
+    show_face(disp, fonts, stick, "idle")
     print("Ready! Press button A to speak. Ctrl+C to quit.")
 
     try:
@@ -222,26 +253,27 @@ def main():
                 while btn_a_pressed():
                     time.sleep(0.05)
 
-                audio_path = record_audio(disp, fonts)
-                user_text  = transcribe(whisper_model, audio_path, disp, fonts)
+                audio_path = record_audio(disp, fonts, stick)
+                user_text  = transcribe(whisper_model, audio_path, disp, fonts, stick)
 
                 if not user_text:
-                    show_face(disp, fonts, "error")
+                    show_face(disp, fonts, stick, "error")
                     print("  Didn't catch that")
                     time.sleep(2)
                 else:
                     print(f"  You: {user_text}")
-                    reply = ask_claude(client, history, user_text, disp, fonts)
-                    speak(reply, disp, fonts)
+                    reply = ask_claude(client, history, user_text, disp, fonts, stick)
+                    speak(reply, disp, fonts, stick)
                     time.sleep(0.5)
 
-                show_face(disp, fonts, "idle")
+                show_face(disp, fonts, stick, "idle")
 
             time.sleep(0.05)
 
     except KeyboardInterrupt:
         print("\nBye!")
-        show_face(disp, fonts, "idle")
+        set_leds(stick, (0, 0, 0))
+        show_face(disp, fonts, stick, "idle")
         GPIO.cleanup()
 
 
