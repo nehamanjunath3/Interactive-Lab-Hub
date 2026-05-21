@@ -95,10 +95,23 @@ def btn_pressed(btn):
         return False
 
 
+def find_input_device(pa):
+    """Return index of first USB input device, or None for default."""
+    for i in range(pa.get_device_count()):
+        info = pa.get_device_info_by_index(i)
+        if info["maxInputChannels"] > 0 and "USB" in info["name"]:
+            print(f"  Using mic: {info['name']} (index {i})")
+            return i
+    return None
+
+
 def record_audio(leds, red_btn, keyboard_mode):
-    pa     = pyaudio.PyAudio()
-    stream = pa.open(format=pyaudio.paInt16, channels=CHANNELS,
-                     rate=SAMPLE_RATE, input=True, frames_per_buffer=CHUNK)
+    pa          = pyaudio.PyAudio()
+    input_index = find_input_device(pa)
+    stream      = pa.open(format=pyaudio.paInt16, channels=CHANNELS,
+                          rate=SAMPLE_RATE, input=True,
+                          input_device_index=input_index,
+                          frames_per_buffer=CHUNK)
     frames = []
     start  = time.time()
     set_leds(leds, COLOUR_LISTEN)
