@@ -23,7 +23,7 @@ from google import genai
 from faster_whisper import WhisperModel
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SAMPLE_RATE     = 16000
+SAMPLE_RATE     = 44100
 CHANNELS        = 1
 CHUNK           = 1024
 MAX_RECORD_SECS = 15
