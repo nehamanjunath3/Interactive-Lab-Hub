@@ -1,66 +1,81 @@
 #!/usr/bin/env python3
 """
 Voice AI Assistant for Raspberry Pi
-- Green Qwiic button (addr 0x5F): press to talk
-- Red Qwiic button  (addr 0x6F): stop recording
-- Qwiic LED stick                : status colors
-- Qwiic OLED display             : show conversation
+- Green Qwiic button (addr 0x5F): press to talk  [optional]
+- Red Qwiic button  (addr 0x6F): stop recording  [optional]
+- Qwiic LED stick                : status colors  [optional]
 - faster-whisper                 : speech-to-text (runs locally)
 - Gemini API                     : AI responses
 - espeak-ng                      : text-to-speech
+
+Falls back to keyboard (Enter to start/stop) when hardware not connected.
 """
 
 import os
 import time
 import wave
 import tempfile
-import textwrap
+import threading
 import subprocess
 
 import pyaudio
 from google import genai
-import qwiic_button
-import qwiic_led_stick
-# qwiic_micro_oled imported lazily — only when hardware is connected
 from faster_whisper import WhisperModel
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SAMPLE_RATE       = 16000
-CHANNELS          = 1
-CHUNK             = 1024
-MAX_RECORD_SECS   = 15
-WHISPER_MODEL     = "tiny"          # "base" is more accurate but slower on Pi
-GEMINI_MODEL      = "gemini-1.5-flash"
-SYSTEM_PROMPT     = (
+SAMPLE_RATE     = 16000
+CHANNELS        = 1
+CHUNK           = 1024
+MAX_RECORD_SECS = 15
+WHISPER_MODEL   = "tiny"
+GEMINI_MODEL    = "gemini-1.5-flash"
+SYSTEM_PROMPT   = (
     "You are a friendly voice assistant running on a Raspberry Pi. "
     "Keep every response under 2 sentences so it fits on a small screen "
     "and doesn't take long to read aloud."
 )
 
-# ── LED colours (r, g, b) ─────────────────────────────────────────────────────
-COLOUR_OFF      = (  0,   0,   0)
-COLOUR_IDLE     = (  5,   5,   5)   # dim white
-COLOUR_LISTEN   = (  0,  50, 255)   # blue
-COLOUR_THINK    = (128,   0, 255)   # purple
-COLOUR_SPEAK    = (  0, 200,  50)   # green
-COLOUR_ERROR    = (255,  30,   0)   # red-orange
+COLOUR_OFF    = (  0,   0,   0)
+COLOUR_IDLE   = (  5,   5,   5)
+COLOUR_LISTEN = (  0,  50, 255)
+COLOUR_THINK  = (128,   0, 255)
+COLOUR_SPEAK  = (  0, 200,  50)
+COLOUR_ERROR  = (255,  30,   0)
 
 
-def init_hardware():
-    green_btn = qwiic_button.QwiicButton(address=0x5F)
-    red_btn   = qwiic_button.QwiicButton(address=0x6F)
-    leds      = qwiic_led_stick.QwiicLEDStick()
-    for dev, name in [(green_btn, "green button"), (red_btn, "red button"),
-                      (leds, "LED stick")]:
-        if not dev.is_connected():
-            print(f"[WARN] {name} not detected — check wiring/address")
-
-    return green_btn, red_btn, leds, None  # oled=None until library fixed
+def try_import_qwiic():
+    """Return (green_btn, red_btn, leds) or Nones if hardware not available."""
+    try:
+        import qwiic_button
+        import qwiic_led_stick
+        green = qwiic_button.QwiicButton(address=0x5F)
+        red   = qwiic_button.QwiicButton(address=0x6F)
+        leds  = qwiic_led_stick.QwiicLEDStick()
+        # Quick connectivity check
+        green_ok = green.is_connected()
+        red_ok   = red.is_connected()
+        leds_ok  = leds.is_connected()
+        if not green_ok: print("[WARN] green button not found")
+        if not red_ok:   print("[WARN] red button not found")
+        if not leds_ok:  print("[WARN] LED stick not found")
+        return (
+            green if green_ok else None,
+            red   if red_ok   else None,
+            leds  if leds_ok  else None,
+        )
+    except Exception as e:
+        print(f"[WARN] Qwiic hardware unavailable: {e}")
+        return None, None, None
 
 
 def set_leds(leds, colour):
-    r, g, b = colour
-    leds.set_all_LED_color(r, g, b)
+    if leds is None:
+        return
+    try:
+        r, g, b = colour
+        leds.set_all_LED_color(r, g, b)
+    except Exception:
+        pass
 
 
 def pulse_leds(leds, colour, times=2):
@@ -71,35 +86,34 @@ def pulse_leds(leds, colour, times=2):
         time.sleep(0.12)
 
 
-def show_oled(oled, line1, line2=""):
-    print(f"[OLED] {line1} {line2}".strip())
-    if oled is None:
-        return
-    oled.clear()
-    wrapped = textwrap.wrap(line1, 16)[:2]
-    if line2:
-        wrapped += textwrap.wrap(line2, 16)[:2]
-    for row, text in enumerate(wrapped[:4]):
-        oled.print(text)
-    oled.display()
+def btn_pressed(btn):
+    if btn is None:
+        return False
+    try:
+        return btn.is_button_pressed()
+    except Exception:
+        return False
 
 
-def record_audio(leds, oled, red_btn):
-    """Record until red button is pressed or MAX_RECORD_SECS elapses."""
+def record_audio(leds, red_btn, keyboard_mode):
     pa     = pyaudio.PyAudio()
     stream = pa.open(format=pyaudio.paInt16, channels=CHANNELS,
                      rate=SAMPLE_RATE, input=True, frames_per_buffer=CHUNK)
     frames = []
     start  = time.time()
-
     set_leds(leds, COLOUR_LISTEN)
-    show_oled(oled, "Listening...", "Red=stop")
 
-    while time.time() - start < MAX_RECORD_SECS:
-        data = stream.read(CHUNK, exception_on_overflow=False)
-        frames.append(data)
-        if red_btn.is_button_pressed():
-            break
+    if keyboard_mode:
+        # Non-blocking: stop when user presses Enter
+        stop = threading.Event()
+        threading.Thread(target=lambda: (input(), stop.set()), daemon=True).start()
+        print("  Recording... press Enter to stop")
+        while not stop.is_set() and time.time() - start < MAX_RECORD_SECS:
+            frames.append(stream.read(CHUNK, exception_on_overflow=False))
+    else:
+        print("  Recording... press red button to stop")
+        while not btn_pressed(red_btn) and time.time() - start < MAX_RECORD_SECS:
+            frames.append(stream.read(CHUNK, exception_on_overflow=False))
 
     stream.stop_stream()
     stream.close()
@@ -108,41 +122,42 @@ def record_audio(leds, oled, red_btn):
     tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     with wave.open(tmp.name, "wb") as wf:
         wf.setnchannels(CHANNELS)
-        wf.setsampwidth(2)           # paInt16 = 2 bytes per sample
+        wf.setsampwidth(2)
         wf.setframerate(SAMPLE_RATE)
         wf.writeframes(b"".join(frames))
     return tmp.name
 
 
-def transcribe(whisper_model, audio_path, leds, oled):
+def transcribe(whisper_model, audio_path, leds):
     set_leds(leds, COLOUR_THINK)
-    show_oled(oled, "Transcribing...")
+    print("  Transcribing...")
     segments, _ = whisper_model.transcribe(audio_path, language="en")
     text = " ".join(seg.text.strip() for seg in segments)
     os.unlink(audio_path)
     return text.strip()
 
 
-def ask_gemini(chat, user_text, leds, oled):
+def ask_gemini(chat, user_text, leds):
     set_leds(leds, COLOUR_THINK)
-    show_oled(oled, "Thinking...", user_text[:32])
+    print("  Thinking...")
     response = chat.send_message(user_text)
     return response.text.strip()
 
 
-
-def speak(text, leds, oled):
+def speak(text, leds):
     set_leds(leds, COLOUR_SPEAK)
-    show_oled(oled, text[:32], text[32:64] if len(text) > 32 else "")
-    subprocess.run(["espeak-ng", "-s", "145", "-v", "en-us+f3", text],
-                   check=False)
+    print(f"  Gemini: {text}")
+    subprocess.run(["espeak-ng", "-s", "145", "-v", "en-us+f3", text], check=False)
 
 
 def main():
     print("Initialising hardware...")
-    green_btn, red_btn, leds, oled = init_hardware()
+    green_btn, red_btn, leds = try_import_qwiic()
+    keyboard_mode = green_btn is None
+    if keyboard_mode:
+        print("[INFO] No buttons detected — using keyboard (Enter to talk)")
 
-    print(f"Loading Whisper '{WHISPER_MODEL}' model (first run downloads it)...")
+    print(f"Loading Whisper '{WHISPER_MODEL}' model...")
     whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
 
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
@@ -150,39 +165,40 @@ def main():
                                  config={"system_instruction": SYSTEM_PROMPT})
 
     set_leds(leds, COLOUR_IDLE)
-    show_oled(oled, "AI Assistant", "Press GREEN")
-    print("Ready. Press the green button to speak.")
+    prompt = "Press Enter to speak" if keyboard_mode else "Press GREEN button to speak"
+    print(f"\nReady! {prompt}. Ctrl+C to quit.\n")
 
     try:
         while True:
-            if green_btn.is_button_pressed():
-                pulse_leds(leds, COLOUR_LISTEN, times=2)
+            if keyboard_mode:
+                input("[ Press Enter to speak ]")
+                triggered = True
+            else:
+                triggered = btn_pressed(green_btn)
 
-                audio_path = record_audio(leds, oled, red_btn)
-                user_text  = transcribe(whisper_model, audio_path, leds, oled)
+            if triggered:
+                pulse_leds(leds, COLOUR_LISTEN)
+                audio_path = record_audio(leds, red_btn, keyboard_mode)
+                user_text  = transcribe(whisper_model, audio_path, leds)
 
                 if not user_text:
-                    show_oled(oled, "Didn't hear you", "Try again")
+                    print("  Didn't catch that — try again")
                     set_leds(leds, COLOUR_ERROR)
-                    time.sleep(2)
+                    time.sleep(1)
                 else:
-                    print(f"You: {user_text}")
-                    reply = ask_gemini(chat, user_text, leds, oled)
-                    print(f"Gemini: {reply}")
-                    speak(reply, leds, oled)
+                    print(f"  You: {user_text}")
+                    reply = ask_gemini(chat, user_text, leds)
+                    speak(reply, leds)
                     time.sleep(0.5)
 
                 set_leds(leds, COLOUR_IDLE)
-                show_oled(oled, "AI Assistant", "Press GREEN")
 
-            time.sleep(0.05)
+            if not keyboard_mode:
+                time.sleep(0.05)
 
     except KeyboardInterrupt:
         print("\nBye!")
         set_leds(leds, COLOUR_OFF)
-        if oled:
-            oled.clear()
-            oled.display()
 
 
 if __name__ == "__main__":
