@@ -19,7 +19,7 @@ import threading
 import subprocess
 
 import pyaudio
-from google import genai
+import anthropic
 from faster_whisper import WhisperModel
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -28,7 +28,7 @@ CHANNELS        = 1
 CHUNK           = 1024
 MAX_RECORD_SECS = 15
 WHISPER_MODEL   = "tiny"
-GEMINI_MODEL    = "gemini-3.5-flash"
+CLAUDE_MODEL    = "claude-haiku-4-5-20251001"
 SYSTEM_PROMPT   = (
     "You are a friendly voice assistant running on a Raspberry Pi. "
     "Keep every response under 2 sentences so it fits on a small screen "
@@ -150,16 +150,24 @@ def transcribe(whisper_model, audio_path, leds):
     return text.strip()
 
 
-def ask_gemini(chat, user_text, leds):
+def ask_claude(client, history, user_text, leds):
     set_leds(leds, COLOUR_THINK)
     print("  Thinking...")
-    response = chat.send_message(user_text)
-    return response.text.strip()
+    history.append({"role": "user", "content": user_text})
+    response = client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=150,
+        system=SYSTEM_PROMPT,
+        messages=history,
+    )
+    reply = response.content[0].text.strip()
+    history.append({"role": "assistant", "content": reply})
+    return reply
 
 
 def speak(text, leds):
     set_leds(leds, COLOUR_SPEAK)
-    print(f"  Gemini: {text}")
+    print(f"  Claude: {text}")
     subprocess.run(["espeak-ng", "-s", "145", "-v", "en-us+f3", text], check=False)
 
 
@@ -173,9 +181,8 @@ def main():
     print(f"Loading Whisper '{WHISPER_MODEL}' model...")
     whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
 
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    chat   = client.chats.create(model=GEMINI_MODEL,
-                                 config={"system_instruction": SYSTEM_PROMPT})
+    client  = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    history = []
 
     set_leds(leds, COLOUR_IDLE)
     prompt = "Press Enter to speak" if keyboard_mode else "Press GREEN button to speak"
@@ -200,7 +207,7 @@ def main():
                     time.sleep(1)
                 else:
                     print(f"  You: {user_text}")
-                    reply = ask_gemini(chat, user_text, leds)
+                    reply = ask_claude(client, history, user_text, leds)
                     speak(reply, leds)
                     time.sleep(0.5)
 
