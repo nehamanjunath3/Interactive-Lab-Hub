@@ -6,6 +6,10 @@ dependencies = [
     "anthropic",
     "faster-whisper",
     "pyaudio",
+    "RPi.GPIO",
+    "adafruit-blinka",
+    "adafruit-circuitpython-rgb-display",
+    "Pillow",
     "sparkfun-qwiic-button",
     "sparkfun-qwiic-led-stick",
 ]
