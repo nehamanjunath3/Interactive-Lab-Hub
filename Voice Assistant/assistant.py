@@ -60,7 +60,7 @@ def init_hardware():
 
 def set_leds(leds, colour):
     r, g, b = colour
-    leds.set_all_led_color(r, g, b)
+    leds.set_all_LED_color(r, g, b)
 
 
 def pulse_leds(leds, colour, times=2):
