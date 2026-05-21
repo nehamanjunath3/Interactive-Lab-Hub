@@ -3,7 +3,7 @@ name = "voice-assistant"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "anthropic",
+    "google-generativeai",
     "faster-whisper",
     "pyaudio",
     "sparkfun-qwiic-button",

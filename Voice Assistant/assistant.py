@@ -6,12 +6,11 @@ Voice AI Assistant for Raspberry Pi
 - Qwiic LED stick                : status colors
 - Qwiic OLED display             : show conversation
 - faster-whisper                 : speech-to-text (runs locally)
-- Claude API                     : AI responses
+- Gemini API                     : AI responses
 - espeak-ng                      : text-to-speech
 """
 
 import os
-import sys
 import time
 import wave
 import tempfile
@@ -19,7 +18,7 @@ import textwrap
 import subprocess
 
 import pyaudio
-import anthropic
+import google.generativeai as genai
 import qwiic_button
 import qwiic_led_stick
 import qwiic_oled_display
@@ -31,7 +30,7 @@ CHANNELS          = 1
 CHUNK             = 1024
 MAX_RECORD_SECS   = 15
 WHISPER_MODEL     = "tiny"          # "base" is more accurate but slower on Pi
-CLAUDE_MODEL      = "claude-haiku-4-5-20251001"
+GEMINI_MODEL      = "gemini-1.5-flash"
 SYSTEM_PROMPT     = (
     "You are a friendly voice assistant running on a Raspberry Pi. "
     "Keep every response under 2 sentences so it fits on a small screen "
@@ -124,21 +123,11 @@ def transcribe(whisper_model, audio_path, leds, oled):
     return text.strip()
 
 
-def ask_claude(client, history, user_text, leds, oled):
+def ask_gemini(chat, user_text, leds, oled):
     set_leds(leds, COLOUR_THINK)
-    # Truncate display to first 32 chars so it fits on screen
     show_oled(oled, "Thinking...", user_text[:32])
-
-    history.append({"role": "user", "content": user_text})
-    response = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=150,
-        system=SYSTEM_PROMPT,
-        messages=history,
-    )
-    reply = response.content[0].text.strip()
-    history.append({"role": "assistant", "content": reply})
-    return reply
+    response = chat.send_message(user_text)
+    return response.text.strip()
 
 
 def speak(text, leds, oled):
@@ -155,8 +144,9 @@ def main():
     print(f"Loading Whisper '{WHISPER_MODEL}' model (first run downloads it)...")
     whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
 
-    client  = anthropic.Anthropic()   # reads ANTHROPIC_API_KEY from env
-    history = []
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    model = genai.GenerativeModel(GEMINI_MODEL, system_instruction=SYSTEM_PROMPT)
+    chat  = model.start_chat(history=[])
 
     set_leds(leds, COLOUR_IDLE)
     show_oled(oled, "AI Assistant", "Press GREEN")
@@ -176,8 +166,8 @@ def main():
                     time.sleep(2)
                 else:
                     print(f"You: {user_text}")
-                    reply = ask_claude(client, history, user_text, leds, oled)
-                    print(f"Claude: {reply}")
+                    reply = ask_gemini(chat, user_text, leds, oled)
+                    print(f"Gemini: {reply}")
                     speak(reply, leds, oled)
                     time.sleep(0.5)
 
