@@ -15,7 +15,6 @@ import os
 import time
 import wave
 import tempfile
-import threading
 import subprocess
 
 import pyaudio
@@ -26,7 +25,7 @@ from faster_whisper import WhisperModel
 SAMPLE_RATE     = 44100
 CHANNELS        = 1
 CHUNK           = 1024
-MAX_RECORD_SECS = 15
+MAX_RECORD_SECS = 5
 WHISPER_MODEL   = "tiny"
 CLAUDE_MODEL    = "claude-haiku-4-5-20251001"
 SYSTEM_PROMPT   = (
@@ -117,11 +116,8 @@ def record_audio(leds, red_btn, keyboard_mode):
     set_leds(leds, COLOUR_LISTEN)
 
     if keyboard_mode:
-        # Non-blocking: stop when user presses Enter
-        stop = threading.Event()
-        threading.Thread(target=lambda: (input(), stop.set()), daemon=True).start()
-        print("  Recording... press Enter to stop")
-        while not stop.is_set() and time.time() - start < MAX_RECORD_SECS:
+        print(f"  Recording for {MAX_RECORD_SECS}s... speak now!")
+        while time.time() - start < MAX_RECORD_SECS:
             frames.append(stream.read(CHUNK, exception_on_overflow=False))
     else:
         print("  Recording... press red button to stop")
