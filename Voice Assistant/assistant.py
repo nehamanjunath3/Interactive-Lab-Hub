@@ -3,7 +3,7 @@
 Voice AI Assistant for Raspberry Pi w/ Adafruit Mini PiTFT 1.3"
 - Button A (GPIO 23): press to start recording
 - Button B (GPIO 24): press to stop recording early
-- MiniPiTFT display : show status and responses
+- MiniPiTFT display : Inside Out emotion faces per state
 - faster-whisper    : speech-to-text (runs locally)
 - Claude Haiku      : AI responses
 - espeak-ng         : text-to-speech
@@ -15,6 +15,7 @@ import wave
 import tempfile
 import textwrap
 import subprocess
+from pathlib import Path
 
 import pyaudio
 import anthropic
@@ -42,14 +43,26 @@ SYSTEM_PROMPT   = (
 BTN_A = 23
 BTN_B = 24
 
-# ── Display colours ───────────────────────────────────────────────────────────
+# ── Colours ───────────────────────────────────────────────────────────────────
 BLACK  = (  0,   0,   0)
 WHITE  = (255, 255, 255)
-BLUE   = ( 30, 100, 255)
-PURPLE = (150,   0, 255)
-GREEN  = ( 30, 200,  80)
+YELLOW = (255, 220,   0)
+BLUE   = ( 60, 120, 255)
+PURPLE = (160,  60, 220)
+GREEN  = ( 40, 200,  80)
 RED    = (220,  50,  30)
-GREY   = ( 60,  60,  60)
+
+FACES_DIR = Path(__file__).parent / "faces"
+
+# State → (face file, label, label colour, bg colour)
+STATES = {
+    "idle":         ("joy.png",     "Press A!",      YELLOW, ( 30,  25,   0)),
+    "listening":    ("fear.png",    "Listening...",  PURPLE, ( 15,   0,  25)),
+    "transcribing": ("sadness.png", "Hmm...",        BLUE,   (  0,   5,  25)),
+    "thinking":     ("sadness.png", "Thinking...",   BLUE,   (  0,   5,  25)),
+    "speaking":     ("excited.png", "Claude says:",  GREEN,  (  0,  20,   5)),
+    "error":        ("anger.png",   "Try again!",    RED,    ( 25,   0,   0)),
+}
 
 
 def init_display():
@@ -59,11 +72,20 @@ def init_display():
     spi   = board.SPI()
     disp  = st7789.ST7789(spi, rotation=90, width=240, height=240,
                           cs=cs, dc=dc, rst=reset, baudrate=64000000)
-    # Turn on backlight
     backlight = digitalio.DigitalInOut(board.D26)
     backlight.switch_to_output()
     backlight.value = True
     return disp
+
+
+def load_fonts():
+    try:
+        bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
+        reg  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
+    except Exception:
+        bold = ImageFont.load_default()
+        reg  = bold
+    return bold, reg
 
 
 def init_buttons():
@@ -80,26 +102,30 @@ def btn_b_pressed():
     return GPIO.input(BTN_B) == GPIO.LOW
 
 
-def show(disp, title, body="", title_color=WHITE, body_color=WHITE, bg=BLACK):
+def show_face(disp, fonts, state, body=""):
+    face_file, label, label_color, bg = STATES[state]
+    bold, reg = fonts
+
     img  = Image.new("RGB", (240, 240), bg)
     draw = ImageDraw.Draw(img)
-    try:
-        font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 26)
-        font_body  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-    except Exception:
-        font_title = ImageFont.load_default()
-        font_body  = font_title
 
-    # Title
-    draw.text((10, 10), title, font=font_title, fill=title_color)
+    # Face — centred in top ~160px
+    face_path = FACES_DIR / face_file
+    if face_path.exists():
+        face = Image.open(face_path).convert("RGBA").resize((160, 160), Image.LANCZOS)
+        # Paste with alpha mask so transparent background shows through
+        img.paste(face, (40, 5), face)
 
-    # Body — word-wrap to ~18 chars per line
+    # Label below face
+    draw.text((10, 170), label, font=bold, fill=label_color)
+
+    # Body text (wrapped)
     if body:
-        y = 55
-        for line in textwrap.wrap(body, width=18):
-            draw.text((10, y), line, font=font_body, fill=body_color)
-            y += 26
-            if y > 220:
+        y = 200
+        for line in textwrap.wrap(body, width=22):
+            draw.text((10, y), line, font=reg, fill=WHITE)
+            y += 22
+            if y > 235:
                 break
 
     disp.image(img)
@@ -114,7 +140,7 @@ def find_input_device(pa):
     return None
 
 
-def record_audio(disp):
+def record_audio(disp, fonts):
     pa          = pyaudio.PyAudio()
     input_index = find_input_device(pa)
     stream      = pa.open(format=pyaudio.paInt16, channels=CHANNELS,
@@ -123,7 +149,7 @@ def record_audio(disp):
                           frames_per_buffer=CHUNK)
     frames = []
     start  = time.time()
-    show(disp, "Listening...", "Press B to stop", title_color=BLUE, bg=(0, 0, 20))
+    show_face(disp, fonts, "listening")
 
     while time.time() - start < MAX_RECORD_SECS:
         frames.append(stream.read(CHUNK, exception_on_overflow=False))
@@ -143,16 +169,16 @@ def record_audio(disp):
     return tmp.name
 
 
-def transcribe(whisper_model, audio_path, disp):
-    show(disp, "Transcribing...", title_color=PURPLE, bg=(10, 0, 20))
+def transcribe(whisper_model, audio_path, disp, fonts):
+    show_face(disp, fonts, "transcribing")
     segments, _ = whisper_model.transcribe(audio_path, language="en")
     text = " ".join(seg.text.strip() for seg in segments)
     os.unlink(audio_path)
     return text.strip()
 
 
-def ask_claude(client, history, user_text, disp):
-    show(disp, "Thinking...", user_text[:60], title_color=PURPLE, bg=(10, 0, 20))
+def ask_claude(client, history, user_text, disp, fonts):
+    show_face(disp, fonts, "thinking", user_text[:50])
     history.append({"role": "user", "content": user_text})
     response = client.messages.create(
         model=CLAUDE_MODEL,
@@ -165,58 +191,57 @@ def ask_claude(client, history, user_text, disp):
     return reply
 
 
-def speak(text, disp):
-    show(disp, "Claude says:", text, title_color=GREEN, bg=(0, 15, 0))
+def speak(text, disp, fonts):
+    show_face(disp, fonts, "speaking", text)
     print(f"  Claude: {text}")
     subprocess.run(["espeak-ng", "-s", "145", "-v", "en-us+f3", text], check=False)
 
 
 def main():
     print("Initialising display...")
-    disp = init_display()
-    show(disp, "Starting up...", bg=GREY)
+    disp  = init_display()
+    fonts = load_fonts()
+    show_face(disp, fonts, "thinking")  # Sadness = loading face
 
     print("Initialising buttons...")
     init_buttons()
 
     print(f"Loading Whisper '{WHISPER_MODEL}' model...")
-    show(disp, "Loading AI...", "Please wait", bg=GREY)
     whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
 
     client  = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     history = []
 
-    show(disp, "Ready!", "Press A to speak", title_color=GREEN, bg=BLACK)
+    show_face(disp, fonts, "idle")
     print("Ready! Press button A to speak. Ctrl+C to quit.")
 
     try:
         while True:
             if btn_a_pressed():
-                # Debounce
                 time.sleep(0.05)
                 while btn_a_pressed():
                     time.sleep(0.05)
 
-                audio_path = record_audio(disp)
-                user_text  = transcribe(whisper_model, audio_path, disp)
+                audio_path = record_audio(disp, fonts)
+                user_text  = transcribe(whisper_model, audio_path, disp, fonts)
 
                 if not user_text:
-                    show(disp, "Didn't hear", "Try again", title_color=RED, bg=BLACK)
+                    show_face(disp, fonts, "error")
                     print("  Didn't catch that")
                     time.sleep(2)
                 else:
                     print(f"  You: {user_text}")
-                    reply = ask_claude(client, history, user_text, disp)
-                    speak(reply, disp)
+                    reply = ask_claude(client, history, user_text, disp, fonts)
+                    speak(reply, disp, fonts)
                     time.sleep(0.5)
 
-                show(disp, "Ready!", "Press A to speak", title_color=GREEN, bg=BLACK)
+                show_face(disp, fonts, "idle")
 
             time.sleep(0.05)
 
     except KeyboardInterrupt:
         print("\nBye!")
-        show(disp, "Goodbye!", bg=BLACK)
+        show_face(disp, fonts, "idle")
         GPIO.cleanup()
 
 
